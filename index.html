@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyFlix</title>
+    <title>StudyFlix - Sequential Learning</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +11,9 @@
     <!-- Quill.js -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+    <!-- YouTube IFrame API (Obrigatório para controle de estado) -->
+    <script src="https://www.youtube.com/iframe_api"></script>
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -30,11 +33,22 @@
                         },
                         neon: {
                             cyan: '#00f3ff',
-                            purple: '#bc13fe'
+                            purple: '#bc13fe',
+                            green: '#39ff14'
                         }
                     },
                     fontFamily: {
                         sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 1s ease-in-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
                     }
                 }
             }
@@ -85,15 +99,17 @@
             cursor: pointer;
         }
 
+        /* Player YouTube Otimizado para API */
         .video-container {
             position: relative;
             padding-bottom: 56.25%;
             height: 0;
             overflow: hidden;
             border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            box-shadow: 0 0 50px rgba(0,0,0,0.9);
+            border: 1px solid #333;
         }
-        .video-container iframe {
+        .video-container iframe, .video-container div {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
         }
@@ -109,6 +125,10 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Estilos de Fase */
+        .phase-container { display: none; }
+        .phase-active { display: block; animation: fadeIn 0.5s ease-in-out; }
     </style>
 </head>
 <body class="antialiased">
@@ -181,7 +201,6 @@
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
         // --- 1. FIREBASE CONFIG & HELPERS ---
-        // Configuração Hardcoded conforme solicitado
         const firebaseConfig = {
             apiKey: "AIzaSyC38VXjnYskoAx5SLF6n3PiEgnaRtz4IJ0",
             authDomain: "studyflix53.firebaseapp.com",
@@ -191,15 +210,13 @@
             appId: "1:799853597162:web:179f1450c419157d62a293"
         };
 
-        // Definindo ID do app para estruturar o banco de dados
         const appId = "studyflix53";
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
 
-        // Helper para caminhos seguros (evita erros de permissão)
+        // Helper para caminhos seguros
         const getColRef = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
         const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
         const getUserRef = (userId, subCol, docId) => doc(db, 'artifacts', appId, 'users', userId, subCol, docId);
@@ -235,7 +252,7 @@
             }
         };
 
-        // --- 3. LOGICA DE ADMIN (admin.js) ---
+        // --- 3. LOGICA DE ADMIN (Mantida) ---
         const adminManager = {
             init: () => {
                 if (!state.isAdmin) {
@@ -252,7 +269,6 @@
                     <div class="max-w-4xl mx-auto">
                         <h2 class="text-4xl font-bold mb-8 text-neon-cyan">Painel de Controle</h2>
                         
-                        <!-- Tabs -->
                         <div class="flex gap-4 mb-8 border-b border-gray-700 pb-4">
                             <button onclick="window.renderForm('subject')" class="text-white hover:text-neon-purple font-bold">Nova Matéria</button>
                             <button onclick="window.renderForm('unit')" class="text-white hover:text-neon-purple font-bold">Nova Unidade</button>
@@ -318,14 +334,14 @@
             }
         };
 
-        // Formulários Admin
+        // Bindings Admin
         window.renderForm = async (type) => {
             const content = document.getElementById('adminContent');
             if (type === 'subject') {
                 content.innerHTML = `
                     <form onsubmit="window.submitSubject(event)" class="space-y-4">
                         <h3 class="text-xl font-bold">Nova Matéria (Série)</h3>
-                        <input type="text" id="subjectTitle" placeholder="Nome da Matéria (ex: Matemática)" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
+                        <input type="text" id="subjectTitle" placeholder="Nome da Matéria" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
                         <button type="submit" class="bg-neon-purple px-6 py-2 rounded font-bold text-white hover:bg-purple-700">Salvar Matéria</button>
                     </form>
                 `;
@@ -333,7 +349,6 @@
                 const subs = await getDocs(getColRef("subjects"));
                 let options = "";
                 subs.forEach(doc => options += `<option value="${doc.id}">${doc.data().title}</option>`);
-                
                 content.innerHTML = `
                     <form onsubmit="window.submitUnit(event)" class="space-y-4">
                         <h3 class="text-xl font-bold">Nova Unidade (Temporada)</h3>
@@ -346,256 +361,334 @@
                 const units = await getDocs(getColRef("units"));
                 let options = "";
                 units.forEach(doc => options += `<option value="${doc.id}">${doc.data().title}</option>`);
-
                 content.innerHTML = `
                     <form onsubmit="window.submitLesson(event)" class="space-y-4">
                         <h3 class="text-xl font-bold">Nova Aula (Episódio)</h3>
                         <select id="lessonUnit" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>${options}</select>
                         <input type="text" id="lessonTitle" placeholder="Título da Aula" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
                         <input type="url" id="lessonVideo" placeholder="URL do YouTube" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
-                        
                         <label class="block text-sm text-gray-400">Resumo da Aula</label>
                         <div id="editor" class="h-48 bg-gray-800"></div>
-
                         <label class="block text-sm text-gray-400 mt-4">Material Complementar (PDF/Audio)</label>
                         <input type="file" id="lessonFile" class="w-full text-gray-400">
-
                         <button type="submit" class="mt-4 bg-neon-cyan text-black px-6 py-2 rounded font-bold hover:bg-cyan-400 w-full">Publicar Aula</button>
                     </form>
                 `;
                 window.quillEditor = new Quill('#editor', { theme: 'snow' });
             }
         };
-
         window.submitSubject = adminManager.saveSubject;
         window.submitUnit = adminManager.saveUnit;
         window.submitLesson = adminManager.saveLesson;
 
 
-        // --- 4. LOGICA DO USUÁRIO & APP (app.js) ---
+        // --- 4. LÓGICA DO PLAYER E ROTEAMENTO (REESCRITO) ---
+        let ytPlayer; // Variavel global para o player do YouTube
+
         const mainApp = {
             router: (view, params = null) => {
                 state.currentView = view;
                 const appDiv = document.getElementById('app');
+                
+                // Parar fala ao mudar de tela
+                window.speechSynthesis.cancel();
                 
                 if (view === 'home') mainApp.renderHome(appDiv);
                 else if (view === 'player') mainApp.renderPlayer(appDiv, params);
                 else if (view === 'admin') adminManager.init();
             },
 
+            // --- AUTO-ROTEAMENTO INTELIGENTE ---
+            startSeries: async (subjectId) => {
+                utils.showToast("Buscando primeira aula...");
+                
+                // 1. Achar a primeira unidade desta matéria
+                const unitsSnap = await getDocs(query(getColRef("units"), where("subjectId", "==", subjectId)));
+                if(unitsSnap.empty) return utils.showToast("Sem unidades nesta matéria.");
+                
+                // Ordenar unidades (por data pois nao temos campo ordem)
+                const units = unitsSnap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+                const firstUnit = units[0];
+
+                // 2. Achar a primeira aula desta unidade
+                const lessonsSnap = await getDocs(query(getColRef("lessons"), where("unitId", "==", firstUnit.id)));
+                if(lessonsSnap.empty) return utils.showToast("Sem aulas nesta unidade.");
+                
+                const lessons = lessonsSnap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+                
+                // 3. Redirecionar
+                mainApp.router('player', lessons[0].id);
+            },
+
             renderHome: async (container) => {
                 container.innerHTML = `<div class="flex justify-center mt-20"><div class="loader"></div></div>`;
-                
                 try {
-                    // Fetch data
                     const subSnap = await getDocs(getColRef("subjects"));
                     const unitSnap = await getDocs(getColRef("units"));
                     const lessonSnap = await getDocs(getColRef("lessons"));
 
                     let html = `
                         <div class="mb-10">
-                            <h1 class="text-5xl md:text-7xl font-black mb-4 text-white">Aprenda <br><span class="text-neon-cyan neon-text">Sem Limites.</span></h1>
-                            <p class="text-xl text-gray-400 max-w-2xl">Assista aulas como se fossem sua série favorita.</p>
+                            <h1 class="text-5xl md:text-7xl font-black mb-4 text-white">Aprenda <br><span class="text-neon-cyan neon-text">Sequencialmente.</span></h1>
+                            <p class="text-xl text-gray-400 max-w-2xl">Clique no título da matéria para iniciar sua jornada do começo.</p>
                         </div>
                     `;
 
-                    if (subSnap.empty) {
-                        html += `<div class="p-4 border border-gray-700 rounded bg-gray-900">
-                                    <p class="text-gray-300">👋 Olá! O banco de dados está vazio.</p>
-                                    <p class="text-gray-500 text-sm mt-2">Faça login e clique em "Painel Admin" para adicionar Matérias, Unidades e Aulas.</p>
-                                 </div>`;
-                    }
+                    if (subSnap.empty) html += `<div class="text-gray-500">Nenhum conteúdo.</div>`;
 
                     subSnap.forEach(sub => {
-                        html += `<h2 class="text-2xl font-bold mb-4 mt-8 text-white border-l-4 border-netflix-red pl-3">${sub.data().title}</h2>`;
+                        // Título clicável para "Auto-Roteamento"
+                        html += `
+                            <div class="flex items-center gap-4 mt-12 mb-4 group cursor-pointer" onclick="window.startSeries('${sub.id}')">
+                                <h2 class="text-3xl font-bold text-white group-hover:text-neon-cyan transition">${sub.data().title}</h2>
+                                <div class="bg-netflix-red text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition">
+                                    <i class="fas fa-play"></i> INICIAR JORNADA
+                                </div>
+                            </div>
+                        `;
                         
                         const subUnits = unitSnap.docs.filter(u => u.data().subjectId === sub.id);
-                        
-                        if(subUnits.length === 0) html += `<p class="text-gray-600 text-sm ml-4 mb-4">Nenhuma unidade cadastrada.</p>`;
-
                         subUnits.forEach(unit => {
                             html += `
                                 <div class="mb-6 ml-4">
                                     <h3 class="text-lg text-gray-400 mb-2 uppercase tracking-widest text-sm font-bold">${unit.data().title}</h3>
                                     <div class="scrolling-wrapper">
                             `;
-                            
                             const unitLessons = lessonSnap.docs.filter(l => l.data().unitId === unit.id);
-                            
-                            if(unitLessons.length === 0) html += `<div class="card p-4 flex items-center justify-center text-gray-500 text-sm border border-gray-800">Em breve...</div>`
-
                             unitLessons.forEach(lesson => {
-                                const data = lesson.data();
-                                const ytId = utils.getYouTubeID(data.videoUrl);
-                                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : 'https://placehold.co/300x169/222/999?text=No+Video';
-                                
+                                const ytId = utils.getYouTubeID(lesson.data().videoUrl);
+                                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : 'https://placehold.co/300x169';
                                 html += `
                                     <div class="card card-hover" onclick="window.playLesson('${lesson.id}')">
                                         <div class="h-40 overflow-hidden rounded-t">
                                             <img src="${thumb}" class="w-full h-full object-cover opacity-80 hover:opacity-100 transition">
                                         </div>
                                         <div class="p-3">
-                                            <h4 class="text-white font-bold text-sm truncate">${data.title}</h4>
-                                            <div class="flex items-center gap-2 mt-2">
-                                                <i class="fas fa-play-circle text-neon-cyan"></i>
-                                                <span class="text-xs text-gray-400">Assistir agora</span>
-                                            </div>
+                                            <h4 class="text-white font-bold text-sm truncate">${lesson.data().title}</h4>
+                                            <span class="text-xs text-gray-500">Clique para ir direto</span>
                                         </div>
-                                    </div>
-                                `;
+                                    </div>`;
                             });
                             html += `</div></div>`;
                         });
                     });
-                    
                     container.innerHTML = html;
-                } catch (e) {
-                    console.error("Erro ao carregar home:", e);
-                    container.innerHTML = `<p class="text-red-500">Erro ao carregar dados: ${e.message}</p>`;
-                }
+                } catch (e) { container.innerHTML = `<p class="text-red-500">Erro: ${e.message}</p>`; }
             },
 
+            // --- MÁQUINA DE ESTADOS DO PLAYER ---
             renderPlayer: async (container, lessonId) => {
                 container.innerHTML = `<div class="flex justify-center mt-20"><div class="loader"></div></div>`;
                 
                 try {
                     const docRef = getDocRef("lessons", lessonId);
                     const docSnap = await getDoc(docRef);
+                    if (!docSnap.exists()) return container.innerHTML = "Aula não encontrada.";
                     
-                    if (!docSnap.exists()) {
-                        container.innerHTML = "<p class='text-white'>Aula não encontrada.</p>";
-                        return;
-                    }
-
                     const data = docSnap.data();
                     const ytId = utils.getYouTubeID(data.videoUrl);
 
-                    // Checar progresso
-                    let isCompleted = false;
-                    if(state.user && !state.user.isAnonymous) {
-                        const progressRef = getUserRef(state.user.uid, "progress", lessonId);
-                        try {
-                            const progressSnap = await getDoc(progressRef);
-                            if(progressSnap.exists() && progressSnap.data().concluido) isCompleted = true;
-                        } catch(err) {
-                            console.log("Erro ao checar progresso (pode ser anonimo)", err);
-                        }
-                    }
+                    // Buscar próxima aula (Binge-Watching)
+                    const unitLessonsSnap = await getDocs(query(getColRef("lessons"), where("unitId", "==", data.unitId)));
+                    const unitLessons = unitLessonsSnap.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.createdAt.localeCompare(b.createdAt));
+                    const currentIndex = unitLessons.findIndex(l => l.id === lessonId);
+                    const nextLessonId = (currentIndex !== -1 && currentIndex < unitLessons.length - 1) ? unitLessons[currentIndex + 1].id : null;
 
                     container.innerHTML = `
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
-                            <!-- Video Area -->
-                            <div class="lg:col-span-2">
-                                <button onclick="app.router('home')" class="mb-4 text-gray-400 hover:text-white flex items-center gap-2">
-                                    <i class="fas fa-arrow-left"></i> Voltar
+                        <div class="max-w-5xl mx-auto animate-fade-in relative min-h-[80vh] flex flex-col justify-center">
+                            <!-- Header Fixo -->
+                            <div class="absolute top-0 left-0 w-full flex justify-between items-center mb-6 z-10">
+                                <button onclick="app.router('home')" class="text-gray-400 hover:text-white flex items-center gap-2">
+                                    <i class="fas fa-arrow-left"></i> Sair da Aula
                                 </button>
-                                <div class="video-container border border-gray-800">
-                                    <iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1" frameborder="0" allowfullscreen></iframe>
-                                </div>
-                                <div class="flex justify-between items-center mt-4">
-                                    <h1 class="text-2xl md:text-3xl font-bold text-white">${data.title}</h1>
-                                    <button id="markBtn" onclick="window.markComplete('${lessonId}')" 
-                                        class="${isCompleted ? 'bg-green-600' : 'bg-gray-700 hover:bg-neon-purple'} px-4 py-2 rounded text-white font-bold transition flex items-center gap-2">
-                                        ${isCompleted ? '<i class="fas fa-check"></i> Concluído' : '<i class="fas fa-circle"></i> Marcar Concluído'}
-                                    </button>
-                                </div>
+                                <span class="text-sm text-gray-500 uppercase font-bold tracking-widest">Aula ${currentIndex + 1}/${unitLessons.length}</span>
                             </div>
 
-                            <!-- Sidebar / Resumo -->
-                            <div class="bg-netflix-dark p-6 rounded-lg border border-gray-800 h-fit">
-                                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-                                    <h3 class="text-lg font-bold text-gray-300">Resumo da Aula</h3>
-                                    <div class="flex gap-2">
-                                        <button onclick="window.speechControl('play')" class="text-neon-cyan hover:text-white" title="Ouvir Resumo"><i class="fas fa-volume-up"></i></button>
-                                        <button onclick="window.speechControl('stop')" class="text-red-500 hover:text-white" title="Parar"><i class="fas fa-stop-circle"></i></button>
-                                    </div>
+                            <!-- FASE 1: VÍDEO (IMERSIVO) -->
+                            <div id="phase1" class="phase-container phase-active w-full">
+                                <h1 class="text-3xl font-bold mb-4 text-white text-center">${data.title}</h1>
+                                <div class="video-container mx-auto">
+                                    <div id="yt-player"></div>
                                 </div>
-                                
-                                <div id="lessonSummary" class="prose prose-invert prose-sm max-h-96 overflow-y-auto text-gray-400 leading-relaxed">
-                                    ${data.summary || '<p>Sem resumo.</p>'}
-                                </div>
+                                <p class="text-center text-gray-500 mt-4 text-sm animate-pulse">Assistindo... O próximo passo inicia automaticamente ao fim do vídeo.</p>
+                            </div>
 
+                            <!-- FASE 2: MATERIAL (LEITURA) -->
+                            <div id="phase2" class="phase-container w-full text-center">
+                                <h2 class="text-3xl font-bold mb-8 text-white">Hora da Leitura 📚</h2>
                                 ${data.fileUrl ? `
-                                    <a href="${data.fileUrl}" target="_blank" class="block mt-6 bg-gray-800 p-3 rounded text-center hover:bg-gray-700 transition border border-gray-600">
-                                        <i class="fas fa-download mr-2 text-neon-cyan"></i> Material Complementar
-                                    </a>
-                                ` : ''}
+                                    <div class="bg-gray-800 p-8 rounded-lg border border-gray-700 max-w-2xl mx-auto mb-8">
+                                        <i class="fas fa-file-pdf text-6xl text-red-500 mb-4"></i>
+                                        <p class="mb-6 text-xl">Material Complementar Disponível</p>
+                                        <a href="${data.fileUrl}" target="_blank" class="bg-white text-black px-6 py-3 rounded font-bold hover:bg-gray-200 transition">
+                                            Abrir Material
+                                        </a>
+                                    </div>
+                                ` : '<p class="text-gray-500 mb-8">Nenhum anexo nesta aula.</p>'}
+                                
+                                <button onclick="window.nextPhase(3)" class="bg-neon-cyan text-black text-xl font-bold px-8 py-4 rounded-full hover:bg-cyan-300 transition shadow-[0_0_20px_rgba(0,243,255,0.4)]">
+                                    Terminei a Leitura: Ouvir Resumo <i class="fas fa-arrow-right ml-2"></i>
+                                </button>
+                            </div>
+
+                            <!-- FASE 3: RESUMO E CONCLUSÃO -->
+                            <div id="phase3" class="phase-container w-full">
+                                <div class="max-w-3xl mx-auto bg-netflix-dark p-8 rounded-lg border border-neon-purple shadow-[0_0_30px_rgba(188,19,254,0.2)]">
+                                    <div class="flex items-center gap-4 mb-6">
+                                        <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                                        <h2 class="text-2xl font-bold text-white">Ouvindo Resumo...</h2>
+                                    </div>
+                                    <div id="summaryText" class="prose prose-invert prose-lg text-gray-300 leading-relaxed mb-6">
+                                        ${data.summary || "Esta aula não possui resumo escrito."}
+                                    </div>
+                                    <p class="text-sm text-gray-500 italic text-center">A aula será concluída automaticamente ao fim do áudio.</p>
+                                </div>
                             </div>
                         </div>
                     `;
-                } catch (e) {
-                    container.innerHTML = `<p class='text-red-500'>Erro: ${e.message}</p>`;
-                }
+
+                    // Lógica de Controle de Fases
+                    window.currentLessonId = lessonId;
+                    window.nextLessonId = nextLessonId;
+                    window.hasFile = !!data.fileUrl;
+
+                    // Inicializar YouTube API
+                    if (window.YT && window.YT.Player) {
+                        new YT.Player('yt-player', {
+                            height: '100%',
+                            width: '100%',
+                            videoId: ytId,
+                            playerVars: { 'autoplay': 1, 'controls': 1, 'rel': 0 },
+                            events: {
+                                'onStateChange': (event) => {
+                                    // Se o video terminou (Code 0), vai pra fase 2
+                                    if (event.data === YT.PlayerState.ENDED) {
+                                        window.nextPhase(2);
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                } catch (e) { container.innerHTML = "Erro: " + e.message; }
             }
         };
 
-        // --- 5. AUTH & EXPORTS GLOBAIS ---
+        // --- FUNÇÕES GLOBAIS DE CONTROLE DE FASE ---
+        
+        window.nextPhase = (phaseNum) => {
+            // Esconder todas as fases
+            document.querySelectorAll('.phase-container').forEach(el => el.classList.remove('phase-active'));
+            
+            // Logica Fase 2
+            if (phaseNum === 2) {
+                if (!window.hasFile) {
+                    // Se não tem arquivo, pula direto pra 3
+                    window.nextPhase(3);
+                    return;
+                }
+                document.getElementById('phase2').classList.add('phase-active');
+            }
+
+            // Logica Fase 3 (Resumo + Audio + Conclusão)
+            if (phaseNum === 3) {
+                document.getElementById('phase3').classList.add('phase-active');
+                
+                const summaryEl = document.getElementById('summaryText');
+                const text = utils.stripHtml(summaryEl.innerHTML);
+
+                if (!text || text.trim() === "") {
+                    // Se não tem texto, conclui direto
+                    setTimeout(() => window.markCompleteAndNext(), 2000);
+                    return;
+                }
+
+                // Iniciar Voz
+                const synth = window.speechSynthesis;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'pt-BR';
+                utterance.rate = 1.1;
+                
+                // Evento: Quando terminar de falar
+                utterance.onend = () => {
+                    window.markCompleteAndNext();
+                };
+
+                synth.cancel(); // Parar anteriores
+                synth.speak(utterance);
+            }
+        };
+
+        // --- AUTO-AVANÇO (BINGE-WATCHING) ---
+        window.markCompleteAndNext = async () => {
+            utils.showToast("✅ Aula Concluída!");
+            
+            // 1. Salvar Progresso
+            if(state.user && !state.user.isAnonymous) {
+                try {
+                    const ref = getUserRef(state.user.uid, "progress", window.currentLessonId);
+                    await setDoc(ref, { concluido: true, date: new Date().toISOString() });
+                } catch(e) { console.error("Erro ao salvar progresso", e); }
+            }
+
+            // 2. Redirecionar
+            if (window.nextLessonId) {
+                utils.showToast("⏭️ Iniciando próxima aula em 3s...");
+                setTimeout(() => {
+                    mainApp.router('player', window.nextLessonId);
+                }, 3000);
+            } else {
+                utils.showToast("🎉 Unidade Finalizada! Voltando ao início.");
+                setTimeout(() => {
+                    mainApp.router('home');
+                }, 3000);
+            }
+        };
+
+        // --- AUTH E BINDS (Mantidos) ---
         const authManager = {
             toggleModal: (show) => {
                 const modal = document.getElementById('loginModal');
-                if(show) {
-                    modal.classList.remove('hidden');
-                } else {
-                    modal.classList.add('hidden');
-                }
+                show ? modal.classList.remove('hidden') : modal.classList.add('hidden');
             },
-
             handleLogin: async () => {
                 const email = document.getElementById('emailInput').value;
                 const pass = document.getElementById('passInput').value;
-                
                 if(!email || !pass) return utils.showToast("Preencha email e senha.");
-
                 try {
                     await signInWithEmailAndPassword(auth, email, pass);
                     authManager.toggleModal(false);
-                    utils.showToast("Login realizado com sucesso!");
-                } catch (error) {
-                    console.error(error);
-                    utils.showToast("Erro Login: " + error.message);
-                }
+                    utils.showToast("Login realizado!");
+                } catch (error) { utils.showToast("Erro: " + error.message); }
             },
-
             handleRegister: async () => {
                 const email = document.getElementById('emailInput').value;
                 const pass = document.getElementById('passInput').value;
-
-                if(!email || !pass) return utils.showToast("Preencha email e senha.");
-                if(pass.length < 6) return utils.showToast("Senha deve ter min. 6 caracteres");
-
+                if(!email || !pass) return utils.showToast("Preencha dados.");
+                if(pass.length < 6) return utils.showToast("Senha min. 6 digitos");
                 try {
                     await createUserWithEmailAndPassword(auth, email, pass);
                     authManager.toggleModal(false);
-                    utils.showToast("Cadastro realizado! Bem-vindo.");
-                } catch (error) {
-                    console.error(error);
-                    utils.showToast("Erro Cadastro: " + error.message);
-                }
+                    utils.showToast("Cadastro realizado!");
+                } catch (error) { utils.showToast("Erro: " + error.message); }
             },
-
             logout: async () => {
                 await signOut(auth);
-                // Re-signin anonymously to keep app working for public view
                 window.location.reload(); 
             }
         };
 
-        // Inicialização: Tenta login anonimo se não houver usuario logado para permitir leitura
         onAuthStateChanged(auth, (user) => {
             state.user = user;
             const authContainer = document.getElementById('authContainer');
             const adminBtn = document.getElementById('adminBtn');
 
             if (user) {
-                // Se é anônimo, mostramos botão de Entrar
                 if (user.isAnonymous) {
                      state.isAdmin = false;
                      adminBtn.classList.add('hidden');
                      authContainer.innerHTML = `<button onclick="authManager.toggleModal(true)" class="bg-netflix-red px-4 py-1 rounded text-white font-bold hover:bg-red-700 transition">Entrar</button>`;
                 } else {
-                    // Usuário logado com Email/Senha
-                    
-                    // Checagem de Admin
                     if (user.email && user.email.endsWith('@userpro.com')) {
                         state.isAdmin = true;
                         adminBtn.classList.remove('hidden');
@@ -603,77 +696,36 @@
                         state.isAdmin = false;
                         adminBtn.classList.add('hidden');
                     }
-
                     authContainer.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <div class="flex flex-col text-right hidden md:block">
-                                <span class="text-xs text-gray-400">Olá,</span>
-                                <span class="text-sm font-bold text-white leading-none">${user.email.split('@')[0]}</span>
-                            </div>
+                            <span class="text-xs text-gray-400 hidden md:block">${user.email.split('@')[0]}</span>
                             <img src="https://ui-avatars.com/api/?background=random&name=${user.email}" class="w-8 h-8 rounded border border-gray-600">
-                            <button onclick="authManager.logout()" class="text-xs border border-gray-600 px-2 py-1 rounded text-gray-400 hover:text-white hover:border-white transition">Sair</button>
+                            <button onclick="authManager.logout()" class="text-xs border border-gray-600 px-2 py-1 rounded text-gray-400 hover:text-white transition">Sair</button>
                         </div>
                     `;
-                    utils.showToast(`Bem-vindo, ${user.email}!`);
                 }
-                
-                // Se estiver na home, recarrega para atualizar infos de progresso se houver
                 if (state.currentView === 'home' && !user.isAnonymous) mainApp.renderHome(document.getElementById('app'));
-
             } else {
-                // Se ninguém está logado (nem anônimo), faz login anônimo para liberar a view
-                signInAnonymously(auth).catch(e => console.error("Erro auth anonimo", e));
+                // Modified Error Handling for Anonymous Login
+                state.isAdmin = false;
+                adminBtn.classList.add('hidden');
+                authContainer.innerHTML = `<button onclick="authManager.toggleModal(true)" class="bg-netflix-red px-4 py-1 rounded text-white font-bold hover:bg-red-700 transition">Entrar</button>`;
+
+                signInAnonymously(auth).catch(error => {
+                    const ignoredErrors = ['auth/admin-restricted-operation', 'auth/operation-not-allowed', 'auth/missing-android-pkg-name'];
+                    if (!ignoredErrors.includes(error.code)) {
+                        console.error("Erro auth anônimo:", error);
+                    } else {
+                        console.log("Login anônimo não habilitado. Aguardando login manual.");
+                    }
+                });
             }
         });
 
-        // --- BINDINGS GLOBAIS ---
         window.app = mainApp;
         window.authManager = authManager;
         window.playLesson = (id) => mainApp.router('player', id);
-        
-        window.markComplete = async (lessonId) => {
-            if(!state.user || state.user.isAnonymous) {
-                authManager.toggleModal(true);
-                return utils.showToast("Faça login para salvar progresso.");
-            }
-            try {
-                const ref = getUserRef(state.user.uid, "progress", lessonId);
-                await setDoc(ref, { concluido: true, date: new Date().toISOString() });
-                
-                // UI update
-                const btn = document.getElementById('markBtn');
-                if(btn) {
-                    btn.className = "bg-green-600 px-4 py-2 rounded text-white font-bold transition flex items-center gap-2";
-                    btn.innerHTML = '<i class="fas fa-check"></i> Concluído';
-                }
-                utils.showToast("Progresso salvo!");
-            } catch (e) { 
-                console.error(e); 
-                utils.showToast("Erro ao salvar progresso.");
-            }
-        };
-
-        window.speechControl = (action) => {
-            const synth = window.speechSynthesis;
-            if (action === 'stop') {
-                synth.cancel();
-                return;
-            }
-            
-            const summaryEl = document.getElementById('lessonSummary');
-            if(!summaryEl) return;
-            
-            const text = utils.stripHtml(summaryEl.innerHTML);
-            
-            synth.cancel(); // Limpa fila anterior
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'pt-BR';
-            
-            synth.speak(utterance);
-            utils.showToast("Reproduzindo resumo...");
-        };
-
+        window.startSeries = mainApp.startSeries;
     </script>
 </body>
 </html>
