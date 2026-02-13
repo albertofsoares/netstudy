@@ -1,690 +1,614 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyFlix</title>
-    <!-- Ícones Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Quill Editor (Para Texto Rico) -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     
-    <style>
-        :root {
-            --bg-color: #141414;
-            --card-bg: #1f1f1f;
-            --primary: #e50914; 
-            --text-main: #ffffff;
-            --text-secondary: #b3b3b3;
-            --input-bg: #333;
-        }
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Quill.js -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Configuração de Design System -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        netflix: {
+                            black: '#141414',
+                            dark: '#181818',
+                            red: '#E50914',
+                            hover: '#2F2F2F'
+                        },
+                        neon: {
+                            cyan: '#00f3ff',
+                            purple: '#bc13fe'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700;900&display=swap');
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
+            background-color: #141414;
+            color: #e5e5e5;
+            font-family: 'Inter', sans-serif;
             overflow-x: hidden;
         }
 
-        /* --- TELA DE LOGIN --- */
-        #auth-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            background-image: url('https://assets.nflxext.com/ffe/siteui/vlv3/f841d4c7-10e1-40af-bcae-07a3f8dc141a/f6d7434e-d6de-4185-a6d4-c77a2d08737b/BR-pt-20220502-popsignuptwoweeks-perspective_alpha_website_medium.jpg');
-            background-blend-mode: overlay;
-            z-index: 2000;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .auth-box {
-            background: rgba(0,0,0,0.75);
-            padding: 60px;
-            border-radius: 4px;
-            width: 450px;
-            max-width: 90%;
-        }
-        .auth-box h1 { margin-bottom: 30px; }
-        .auth-input {
-            width: 100%; padding: 16px; margin-bottom: 16px;
-            background: #333; border: none; border-radius: 4px; color: white;
-        }
-        .auth-btn {
-            width: 100%; padding: 16px;
-            background: var(--primary); color: white; font-weight: bold;
-            border: none; border-radius: 4px; cursor: pointer; margin-top: 20px;
-        }
-        .toggle-auth { margin-top: 20px; color: #737373; cursor: pointer; }
-        .toggle-auth span { color: white; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #141414; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #E50914; }
 
-        /* --- APP PRINCIPAL --- */
-        #app-container { display: none; } /* Escondido até logar */
-
-        header {
-            padding: 20px 4%;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 10%, rgba(0,0,0,0));
-            display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 100;
-        }
-
-        .logo { color: var(--primary); font-size: 1.8rem; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; text-decoration: none; }
-
-        .hero {
-            height: 60vh;
-            background-size: cover; background-position: center;
-            display: flex; align-items: flex-end; padding: 0 4% 100px;
-            position: relative;
-        }
-        .hero::after {
-            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to top, var(--bg-color), transparent);
-        }
-        .hero-content { position: relative; z-index: 2; }
-        .hero-content h1 { font-size: 3rem; margin-bottom: 15px; }
+        .neon-text { text-shadow: 0 0 10px rgba(0, 243, 255, 0.7); }
         
-        .btn {
-            padding: 10px 25px; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold;
-            cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: transform 0.2s;
+        .card-hover:hover {
+            transform: scale(1.05);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(188, 19, 254, 0.3);
+            z-index: 10;
         }
-        .btn-primary { background-color: var(--primary); color: white; }
-        .btn-secondary { background-color: rgba(109, 109, 110, 0.7); color: white; margin-left: 10px; }
-        .btn:hover { transform: scale(1.05); }
 
-        .category { padding: 20px 4%; }
-        .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .carousel { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; }
-        .carousel::-webkit-scrollbar { display: none; }
-
+        .scrolling-wrapper {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 20px;
+            scroll-behavior: smooth;
+        }
+        .scrolling-wrapper::-webkit-scrollbar { display: none; }
+        
         .card {
-            min-width: 250px; height: 140px; background-color: #333; border-radius: 4px;
-            position: relative; cursor: pointer; transition: transform 0.3s; overflow: hidden;
-            background-size: cover; background-position: center;
+            flex: 0 0 auto;
+            width: 300px;
+            margin-right: 15px;
+            background: #181818;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
         }
-        .card:hover { transform: scale(1.1); z-index: 10; border: 2px solid var(--text-main); }
-        .card-content {
-            background: rgba(0,0,0,0.8); width: 100%; height: 100%;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            opacity: 0; transition: opacity 0.3s; padding: 10px; text-align: center;
-        }
-        .card:hover .card-content { opacity: 1; }
-        .progress-bar { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--primary); width: 0%; }
 
-        /* --- MODAL DE AULA --- */
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 1000; overflow-y: auto; padding: 50px 4%;
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
-        .modal-content { background: #181818; max-width: 900px; margin: 0 auto; border-radius: 8px; position: relative; min-height: 80vh;}
-        .close-btn {
-            position: absolute; top: 20px; right: 20px; font-size: 2rem; cursor: pointer; z-index: 1001;
-            background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; text-align: center; line-height: 40px;
+        .video-container iframe {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
         }
-        .modal-header-bg { height: 300px; background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; padding: 40px; }
-        .modal-header-bg::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 50%; background: linear-gradient(to top, #181818, transparent); }
-        .modal-body { padding: 40px; }
+
+        .ql-toolbar { background-color: #e5e5e5; border-radius: 8px 8px 0 0; }
+        .ql-container { color: #e5e5e5; font-size: 16px; border-radius: 0 0 8px 8px; background-color: #2F2F2F; }
         
-        .tabs { display: flex; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .tab-btn { background: none; border: none; color: var(--text-secondary); font-size: 1.1rem; cursor: pointer; font-weight: bold; }
-        .tab-btn.active { color: white; border-bottom: 3px solid var(--primary); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.5s; }
-
-        .ql-container.ql-snow { border: none !important; color: #ddd; font-size: 16px; }
-        .ql-toolbar.ql-snow { border: none !important; background: #333; color: white; }
-        
-        .check-complete { margin-top: 30px; padding: 15px; border: 2px solid #333; display: flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 4px; }
-        .check-complete.done { border-color: #2ecc71; color: #2ecc71; }
-
-        /* --- PAINEL ADMIN --- */
-        #admin-panel { display: none; padding: 40px 4%; background: #000; min-height: 100vh; }
-        .admin-section { background: #1f1f1f; padding: 20px; margin-bottom: 30px; border-radius: 8px; }
-        .admin-form input, .admin-form select, .admin-form textarea {
-            width: 100%; padding: 10px; margin-bottom: 10px; background: #333; color: white; border: 1px solid #444; border-radius: 4px;
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #E50914;
+            border-radius: 50%;
+            width: 40px; height: 40px;
+            animation: spin 1s linear infinite;
         }
-        .item-list { margin-top: 15px; }
-        .list-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; align-items: center; }
-        .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
-        .btn-danger { background: #b91c1c; color: white; }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
+<body class="antialiased">
 
-    <!-- CONTAINER AUTH -->
-    <div id="auth-container">
-        <div class="auth-box">
-            <h1 id="auth-title">Entrar</h1>
-            <input type="email" id="email" class="auth-input" placeholder="Email ou Celular">
-            <input type="password" id="password" class="auth-input" placeholder="Senha">
-            <button class="auth-btn" onclick="handleAuth()">Entrar</button>
-            <div class="toggle-auth" onclick="toggleAuthMode()">
-                <span id="auth-toggle-text">Novo por aqui? Assine agora.</span>
-            </div>
-            <p id="auth-error" style="color: red; margin-top: 10px; font-size: 0.9rem;"></p>
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 bg-gradient-to-b from-black to-transparent px-8 py-4 flex justify-between items-center transition-all duration-300" id="navbar">
+        <div class="flex items-center gap-8">
+            <h1 class="text-3xl font-black text-netflix-red tracking-tighter cursor-pointer" onclick="app.router('home')">STUDYFLIX</h1>
+            <ul class="hidden md:flex gap-4 text-sm font-medium text-gray-300">
+                <li class="hover:text-white cursor-pointer transition" onclick="app.router('home')">Início</li>
+            </ul>
         </div>
+        <div class="flex items-center gap-4">
+            <button id="adminBtn" class="hidden text-neon-cyan border border-neon-cyan px-3 py-1 rounded hover:bg-neon-cyan hover:text-black transition text-xs font-bold uppercase" onclick="app.router('admin')">
+                Painel Admin
+            </button>
+            <div id="authContainer">
+                <!-- Auth state injected here -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- App Container -->
+    <main id="app" class="pt-24 min-h-screen px-4 md:px-12 pb-12">
+        <div class="flex justify-center mt-20"><div class="loader"></div></div>
+    </main>
+
+    <!-- Modal de Loading/Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-netflix-dark border-l-4 border-neon-cyan p-4 rounded shadow-2xl transform translate-y-full transition-transform duration-300 z-50">
+        <p id="toastMsg" class="text-white font-bold"></p>
     </div>
 
-    <!-- APP PRINCIPAL -->
-    <div id="app-container">
-        <header>
-            <div class="logo" id="site-logo">STUDYFLIX</div>
-            <div style="display: flex; gap: 20px; align-items: center;">
-                <button id="admin-btn" class="btn btn-secondary" style="display: none;" onclick="showAdmin()">Painel Admin</button>
-                <button class="btn btn-secondary" onclick="logout()">Sair</button>
-            </div>
-        </header>
-
-        <!-- Home View -->
-        <div id="home-view">
-            <!-- Hero Dinâmico -->
-            <section class="hero" id="hero-section" style="background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');">
-                <div class="hero-content">
-                    <h1 id="hero-title">Bem-vindo aos Estudos</h1>
-                    <p id="hero-desc">Selecione uma aula abaixo para começar.</p>
-                </div>
-            </section>
-
-            <!-- Categorias (Renderizadas via JS) -->
-            <div id="categories-container"></div>
-        </div>
-
-        <!-- Painel Admin View -->
-        <div id="admin-panel">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
-                <h1>Painel Administrativo</h1>
-                <button class="btn btn-secondary" onclick="hideAdmin()">Voltar ao Site</button>
-            </div>
-
-            <!-- Configurações do Site -->
-            <div class="admin-section">
-                <h2>⚙️ Configurações Gerais</h2>
-                <div class="admin-form">
-                    <input type="text" id="config-title" placeholder="Nome do Site (Ex: GabrielFlix)">
-                    <input type="text" id="config-favicon" placeholder="URL do Ícone/Favicon">
-                    <button class="btn btn-primary" onclick="saveSiteConfig()">Salvar Aparência</button>
-                </div>
-            </div>
-
-            <!-- Gestão de Matérias (Categorias) -->
-            <div class="admin-section">
-                <h2>📚 Criar Matéria (Categoria)</h2>
-                <div class="admin-form">
-                    <input type="text" id="cat-name" placeholder="Nome da Matéria (Ex: Sistemas Operacionais)">
-                    <button class="btn btn-primary" onclick="addCategory()">Adicionar Matéria</button>
-                </div>
-                <div class="item-list" id="admin-cat-list"></div>
-            </div>
-
-            <!-- Gestão de Aulas -->
-            <div class="admin-section">
-                <h2>🎬 Adicionar/Editar Aula</h2>
-                <div class="admin-form">
-                    <select id="lesson-cat-select"><option value="">Selecione a Matéria</option></select>
-                    <input type="text" id="lesson-title" placeholder="Título da Aula">
-                    <input type="text" id="lesson-desc" placeholder="Descrição Curta">
-                    <input type="text" id="lesson-img" placeholder="URL da Imagem de Capa">
-                    <input type="text" id="lesson-video" placeholder="ID do Video (Youtube/Drive) ou URL Embed">
-                    <input type="text" id="lesson-audio" placeholder="Link do Podcast (NotebookLM)">
-                    <input type="text" id="lesson-slides" placeholder="Link dos Slides (PDF/Drive)">
-                    
-                    <h3 style="margin: 20px 0 10px;">Resumo & Conteúdo (Editor Rico)</h3>
-                    <div id="editor-container" style="height: 300px; background: white; color: black;"></div>
-                    
-                    <button id="btn-save-lesson" class="btn btn-primary" style="margin-top: 20px;" onclick="saveLesson()">Salvar Aula</button>
-                </div>
-                <div class="item-list" id="admin-lesson-list"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL DE VISUALIZAÇÃO -->
-    <div class="modal" id="classModal">
-        <div class="modal-content">
-            <div class="close-btn" onclick="closeModal()">×</div>
-            <div class="modal-header-bg" id="modal-bg">
-                <div style="position: relative; z-index: 2;">
-                    <h1 id="modal-title">Título</h1>
-                    <p id="modal-desc">Desc...</p>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="switchTab('video')">Vídeo</button>
-                    <button class="tab-btn" onclick="switchTab('text')">Resumo & Slides</button>
-                    <button class="tab-btn" onclick="switchTab('audio')">Podcast</button>
-                </div>
-
-                <div id="tab-video" class="tab-content active">
-                    <div id="video-container" style="width:100%; height:400px; background:black;"></div>
-                </div>
-
-                <div id="tab-text" class="tab-content">
-                    <!-- Conteúdo Rico renderizado aqui -->
-                    <div id="rich-text-content" style="color: #ddd; line-height: 1.6; margin-bottom: 30px;"></div>
-                    
-                    <div class="resource-link">
-                        <i data-lucide="presentation"></i>
-                        <a id="slides-link" href="#" target="_blank" style="color: white; text-decoration: none;">Abrir Slides da Aula</a>
-                    </div>
-                </div>
-
-                <div id="tab-audio" class="tab-content">
-                    <div class="resource-link">
-                        <i data-lucide="headphones"></i>
-                        <a id="audio-link" href="#" target="_blank" style="color: white; text-decoration: none;">Ouvir Podcast de Debate</a>
-                    </div>
-                </div>
-
-                <div class="check-complete" id="checkBtn" onclick="toggleProgress()">
-                    <i data-lucide="check-circle"></i>
-                    <span id="checkText">Marcar como Concluído</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FIREBASE SETUP -->
+    <!-- Scripts Modulares -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, setDoc, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
-        // Configuração fornecida
-        const firebaseConfig = {
-            apiKey: "AIzaSyC38VXjnYskoAx5SLF6n3PiEgnaRtz4IJ0",
-            authDomain: "studyflix53.firebaseapp.com",
-            projectId: "studyflix53",
-            storageBucket: "studyflix53.firebasestorage.app",
-            messagingSenderId: "799853597162",
-            appId: "1:799853597162:web:179f1450c419157d62a293"
-        };
+        // --- 1. FIREBASE CONFIG & HELPERS ---
+        // Usa as variáveis globais do ambiente para configurar corretamente
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = __app_id;
 
-        // Init Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
+        const provider = new GoogleAuthProvider();
 
-        // --- VARIÁVEIS GLOBAIS ---
-        let currentUser = null;
-        let quill; // Editor Rico
-        let currentLessonId = null;
+        // Helper para caminhos seguros (evita erros de permissão)
+        const getColRef = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
+        const getDocRef = (colName, docId) => doc(db, 'artifacts', appId, 'public', 'data', colName, docId);
+        const getUserRef = (userId, subCol, docId) => doc(db, 'artifacts', appId, 'users', userId, subCol, docId);
 
-        // --- AUTH LOGIC ---
-        window.isLoginMode = true;
+        // --- 2. GESTÃO DE ESTADO & UTILITÁRIOS ---
+        const state = {
+            user: null,
+            isAdmin: false,
+            currentView: 'home',
+            data: { subjects: [], units: [], lessons: [] }
+        };
 
-        window.toggleAuthMode = () => {
-            window.isLoginMode = !window.isLoginMode;
-            document.getElementById('auth-title').innerText = window.isLoginMode ? "Entrar" : "Criar Conta";
-            document.getElementById('auth-toggle-text').innerText = window.isLoginMode ? "Novo por aqui? Assine agora." : "Já tem conta? Entre.";
-            document.querySelector('.auth-btn').innerText = window.isLoginMode ? "Entrar" : "Cadastrar";
-        }
-
-        window.handleAuth = async () => {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            const errorP = document.getElementById('auth-error');
-
-            try {
-                if (window.isLoginMode) {
-                    await signInWithEmailAndPassword(auth, email, pass);
-                } else {
-                    await createUserWithEmailAndPassword(auth, email, pass);
+        const utils = {
+            showToast: (msg) => {
+                const toast = document.getElementById('toast');
+                const msgEl = document.getElementById('toastMsg');
+                if(msgEl) {
+                    msgEl.innerText = msg;
+                    toast.classList.remove('translate-y-full');
+                    setTimeout(() => toast.classList.add('translate-y-full'), 3000);
                 }
-            } catch (error) {
-                errorP.innerText = error.message;
+            },
+            getYouTubeID: (url) => {
+                if (!url) return null;
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                const match = url.match(regExp);
+                return (match && match[2].length === 11) ? match[2] : null;
+            },
+            stripHtml: (html) => {
+                let tmp = document.createElement("DIV");
+                tmp.innerHTML = html;
+                return tmp.textContent || tmp.innerText || "";
             }
         };
 
-        window.logout = () => signOut(auth);
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                document.getElementById('auth-container').style.display = 'none';
-                document.getElementById('app-container').style.display = 'block';
-                loadSiteConfig();
-                loadContent();
-                
-                // Checagem de Admin (@userpro.com)
-                if (user.email && user.email.includes("@userpro.com")) {
-                    document.getElementById('admin-btn').style.display = 'inline-block';
-                }
-            } else {
-                document.getElementById('auth-container').style.display = 'flex';
-                document.getElementById('app-container').style.display = 'none';
-            }
-        });
-
-        // --- QUILLO EDITOR SETUP ---
-        // Inicializa imediatamente para garantir disponibilidade
-        setTimeout(() => {
-            if(document.getElementById('editor-container')) {
-                quill = new Quill('#editor-container', {
-                    theme: 'snow',
-                    modules: {
-                        toolbar: [
-                            [{ 'header': [1, 2, 3, false] }],
-                            ['bold', 'italic', 'underline', 'strike'],
-                            ['blockquote', 'code-block'],
-                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                            [{ 'color': [] }, { 'background': [] }],
-                            ['clean']
-                        ]
-                    }
-                });
-            }
-        }, 1000);
-
-        window.addEventListener('DOMContentLoaded', () => {
-             lucide.createIcons();
-        });
-
-        // --- LÓGICA DO APP (USUÁRIO) ---
-
-        // Carregar Configurações (Título, Logo)
-        async function loadSiteConfig() {
-            try {
-                const docSnap = await getDoc(doc(db, "settings", "general"));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if(data.title) {
-                        document.title = data.title;
-                        document.getElementById('site-logo').innerText = data.title;
-                    }
-                    if(data.favicon) {
-                        let link = document.querySelector("link[rel~='icon']");
-                        if (!link) {
-                            link = document.createElement('link');
-                            link.rel = 'icon';
-                            document.getElementsByTagName('head')[0].appendChild(link);
-                        }
-                        link.href = data.favicon;
-                    }
-                }
-            } catch (e) { console.log("Config não carregada (primeiro uso)", e); }
-        }
-
-        // Carregar Conteúdo (Categorias e Aulas)
-        async function loadContent() {
-            const catContainer = document.getElementById('categories-container');
-            catContainer.innerHTML = '';
-            const adminCatSelect = document.getElementById('lesson-cat-select');
-            const adminCatList = document.getElementById('admin-cat-list');
-
-            // Limpa Select Admin e define valor padrão vazio
-            adminCatSelect.innerHTML = '<option value="">Selecione a Matéria</option>';
-            adminCatList.innerHTML = '';
-
-            try {
-                const q = collection(db, "categories");
-                const querySnapshot = await getDocs(q);
-
-                querySnapshot.forEach((docSnap) => {
-                    const catData = docSnap.data();
-                    const catId = docSnap.id;
-
-                    // 1. Renderiza no Site
-                    const section = document.createElement('section');
-                    section.className = 'category';
-                    section.innerHTML = `
-                        <div class="category-header">
-                            <h2>${catData.name}</h2>
-                        </div>
-                        <div class="carousel" id="cat-${catId}">Carregando aulas...</div>
-                    `;
-                    catContainer.appendChild(section);
-                    
-                    // Busca aulas dessa categoria
-                    loadLessonsForCategory(catId);
-
-                    // 2. Renderiza no Admin (Select e Lista)
-                    const opt = document.createElement('option');
-                    opt.value = catId; 
-                    opt.innerText = catData.name;
-                    adminCatSelect.appendChild(opt);
-
-                    const divItem = document.createElement('div');
-                    divItem.className = 'list-item';
-                    divItem.innerHTML = `<span>${catData.name}</span> <button class="btn btn-sm btn-danger" onclick="deleteCategory('${catId}')">X</button>`;
-                    adminCatList.appendChild(divItem);
-                });
-            } catch (e) {
-                console.error("Erro ao carregar categorias:", e);
-            }
-        }
-
-        async function loadLessonsForCategory(catId) {
-            const listContainer = document.getElementById(`cat-${catId}`);
-            listContainer.innerHTML = '';
-
-            try {
-                const q = collection(db, "lessons");
-                const snapshot = await getDocs(q);
-                
-                const lessons = [];
-                snapshot.forEach(d => {
-                    if(d.data().catId === catId) lessons.push({id: d.id, ...d.data()});
-                });
-
-                if(lessons.length === 0) {
-                    listContainer.innerHTML = '<p style="color:#666; font-size: 0.9rem; padding: 10px;">Nenhuma aula cadastrada ainda.</p>';
+        // --- 3. LOGICA DE ADMIN (admin.js) ---
+        const adminManager = {
+            init: () => {
+                if (!state.isAdmin) {
+                    mainApp.router('home');
+                    utils.showToast("Acesso Negado: Apenas administradores.");
                     return;
                 }
+                adminManager.renderDashboard();
+            },
 
-                lessons.forEach(async lesson => {
-                    // Checar progresso
-                    let progressWidth = '0%';
-                    if (currentUser) {
-                        const progRef = doc(db, "users", currentUser.uid, "progress", lesson.id);
-                        try {
-                            const progSnap = await getDoc(progRef);
-                            if(progSnap.exists() && progSnap.data().done) progressWidth = '100%';
-                        } catch(e) {}
+            renderDashboard: async () => {
+                const container = document.getElementById('app');
+                container.innerHTML = `
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-4xl font-bold mb-8 text-neon-cyan">Painel de Controle</h2>
+                        
+                        <!-- Tabs -->
+                        <div class="flex gap-4 mb-8 border-b border-gray-700 pb-4">
+                            <button onclick="window.renderForm('subject')" class="text-white hover:text-neon-purple font-bold">Nova Matéria</button>
+                            <button onclick="window.renderForm('unit')" class="text-white hover:text-neon-purple font-bold">Nova Unidade</button>
+                            <button onclick="window.renderForm('lesson')" class="text-white hover:text-neon-purple font-bold">Nova Aula</button>
+                        </div>
+
+                        <div id="adminContent" class="bg-netflix-dark p-6 rounded-lg shadow-lg">
+                            <p class="text-gray-400">Selecione uma opção acima para criar conteúdo.</p>
+                        </div>
+                    </div>
+                `;
+            },
+
+            saveSubject: async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('subjectTitle').value;
+                try {
+                    await addDoc(getColRef("subjects"), { title, createdAt: new Date().toISOString() });
+                    utils.showToast("Matéria criada com sucesso!");
+                    e.target.reset();
+                } catch (err) { console.error(err); utils.showToast("Erro ao salvar: " + err.message); }
+            },
+
+            saveUnit: async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('unitTitle').value;
+                const subjectId = document.getElementById('unitSubject').value;
+                try {
+                    await addDoc(getColRef("units"), { title, subjectId, createdAt: new Date().toISOString() });
+                    utils.showToast("Unidade criada com sucesso!");
+                    e.target.reset();
+                } catch (err) { console.error(err); utils.showToast("Erro ao salvar."); }
+            },
+
+            saveLesson: async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('lessonTitle').value;
+                const unitId = document.getElementById('lessonUnit').value;
+                const videoUrl = document.getElementById('lessonVideo').value;
+                const fileInput = document.getElementById('lessonFile');
+                const summary = window.quillEditor.root.innerHTML;
+
+                let fileUrl = "";
+                if (fileInput.files[0]) {
+                    try {
+                        const fileRef = ref(storage, `materials/${Date.now()}_${fileInput.files[0].name}`);
+                        await uploadBytes(fileRef, fileInput.files[0]);
+                        fileUrl = await getDownloadURL(fileRef);
+                    } catch (err) {
+                        console.error("Storage error:", err);
+                        utils.showToast("Erro no upload do arquivo.");
+                    }
+                }
+
+                try {
+                    await addDoc(getColRef("lessons"), {
+                        title, unitId, videoUrl, summary, fileUrl, createdAt: new Date().toISOString()
+                    });
+                    utils.showToast("Aula publicada!");
+                    e.target.reset();
+                    window.quillEditor.setContents([]);
+                } catch (err) { console.error(err); utils.showToast("Erro ao publicar aula."); }
+            }
+        };
+
+        // Formulários Admin
+        window.renderForm = async (type) => {
+            const content = document.getElementById('adminContent');
+            if (type === 'subject') {
+                content.innerHTML = `
+                    <form onsubmit="window.submitSubject(event)" class="space-y-4">
+                        <h3 class="text-xl font-bold">Nova Matéria (Série)</h3>
+                        <input type="text" id="subjectTitle" placeholder="Nome da Matéria (ex: Matemática)" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
+                        <button type="submit" class="bg-neon-purple px-6 py-2 rounded font-bold text-white hover:bg-purple-700">Salvar Matéria</button>
+                    </form>
+                `;
+            } else if (type === 'unit') {
+                const subs = await getDocs(getColRef("subjects"));
+                let options = "";
+                subs.forEach(doc => options += `<option value="${doc.id}">${doc.data().title}</option>`);
+                
+                content.innerHTML = `
+                    <form onsubmit="window.submitUnit(event)" class="space-y-4">
+                        <h3 class="text-xl font-bold">Nova Unidade (Temporada)</h3>
+                        <select id="unitSubject" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>${options}</select>
+                        <input type="text" id="unitTitle" placeholder="Nome da Unidade" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
+                        <button type="submit" class="bg-neon-purple px-6 py-2 rounded font-bold text-white hover:bg-purple-700">Salvar Unidade</button>
+                    </form>
+                `;
+            } else if (type === 'lesson') {
+                const units = await getDocs(getColRef("units"));
+                let options = "";
+                units.forEach(doc => options += `<option value="${doc.id}">${doc.data().title}</option>`);
+
+                content.innerHTML = `
+                    <form onsubmit="window.submitLesson(event)" class="space-y-4">
+                        <h3 class="text-xl font-bold">Nova Aula (Episódio)</h3>
+                        <select id="lessonUnit" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>${options}</select>
+                        <input type="text" id="lessonTitle" placeholder="Título da Aula" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
+                        <input type="url" id="lessonVideo" placeholder="URL do YouTube" class="w-full p-3 bg-black border border-gray-700 rounded text-white" required>
+                        
+                        <label class="block text-sm text-gray-400">Resumo da Aula</label>
+                        <div id="editor" class="h-48 bg-gray-800"></div>
+
+                        <label class="block text-sm text-gray-400 mt-4">Material Complementar (PDF/Audio)</label>
+                        <input type="file" id="lessonFile" class="w-full text-gray-400">
+
+                        <button type="submit" class="mt-4 bg-neon-cyan text-black px-6 py-2 rounded font-bold hover:bg-cyan-400 w-full">Publicar Aula</button>
+                    </form>
+                `;
+                window.quillEditor = new Quill('#editor', { theme: 'snow' });
+            }
+        };
+
+        window.submitSubject = adminManager.saveSubject;
+        window.submitUnit = adminManager.saveUnit;
+        window.submitLesson = adminManager.saveLesson;
+
+
+        // --- 4. LOGICA DO USUÁRIO & APP (app.js) ---
+        const mainApp = {
+            router: (view, params = null) => {
+                state.currentView = view;
+                const appDiv = document.getElementById('app');
+                
+                if (view === 'home') mainApp.renderHome(appDiv);
+                else if (view === 'player') mainApp.renderPlayer(appDiv, params);
+                else if (view === 'admin') adminManager.init();
+            },
+
+            renderHome: async (container) => {
+                container.innerHTML = `<div class="flex justify-center mt-20"><div class="loader"></div></div>`;
+                
+                try {
+                    // Fetch data
+                    const subSnap = await getDocs(getColRef("subjects"));
+                    const unitSnap = await getDocs(getColRef("units"));
+                    const lessonSnap = await getDocs(getColRef("lessons"));
+
+                    let html = `
+                        <div class="mb-10">
+                            <h1 class="text-5xl md:text-7xl font-black mb-4 text-white">Aprenda <br><span class="text-neon-cyan neon-text">Sem Limites.</span></h1>
+                            <p class="text-xl text-gray-400 max-w-2xl">Assista aulas como se fossem sua série favorita.</p>
+                        </div>
+                    `;
+
+                    if (subSnap.empty) {
+                        html += `<div class="p-4 border border-gray-700 rounded bg-gray-900">
+                                    <p class="text-gray-300">👋 Olá! O banco de dados está vazio.</p>
+                                    <p class="text-gray-500 text-sm mt-2">Faça login e clique em "Painel Admin" para adicionar Matérias, Unidades e Aulas.</p>
+                                 </div>`;
                     }
 
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.style.backgroundImage = `url('${lesson.image || "https://via.placeholder.com/300"}')`;
-                    card.onclick = () => openClass(lesson.id);
-                    card.innerHTML = `
-                        <div class="card-content">
-                            <h3>${lesson.title}</h3>
-                            <i data-lucide="play-circle" style="margin-top:10px;"></i>
+                    subSnap.forEach(sub => {
+                        html += `<h2 class="text-2xl font-bold mb-4 mt-8 text-white border-l-4 border-netflix-red pl-3">${sub.data().title}</h2>`;
+                        
+                        const subUnits = unitSnap.docs.filter(u => u.data().subjectId === sub.id);
+                        
+                        if(subUnits.length === 0) html += `<p class="text-gray-600 text-sm ml-4 mb-4">Nenhuma unidade cadastrada.</p>`;
+
+                        subUnits.forEach(unit => {
+                            html += `
+                                <div class="mb-6 ml-4">
+                                    <h3 class="text-lg text-gray-400 mb-2 uppercase tracking-widest text-sm font-bold">${unit.data().title}</h3>
+                                    <div class="scrolling-wrapper">
+                            `;
+                            
+                            const unitLessons = lessonSnap.docs.filter(l => l.data().unitId === unit.id);
+                            
+                            if(unitLessons.length === 0) html += `<div class="card p-4 flex items-center justify-center text-gray-500 text-sm border border-gray-800">Em breve...</div>`
+
+                            unitLessons.forEach(lesson => {
+                                const data = lesson.data();
+                                const ytId = utils.getYouTubeID(data.videoUrl);
+                                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : 'https://placehold.co/300x169/222/999?text=No+Video';
+                                
+                                html += `
+                                    <div class="card card-hover" onclick="window.playLesson('${lesson.id}')">
+                                        <div class="h-40 overflow-hidden rounded-t">
+                                            <img src="${thumb}" class="w-full h-full object-cover opacity-80 hover:opacity-100 transition">
+                                        </div>
+                                        <div class="p-3">
+                                            <h4 class="text-white font-bold text-sm truncate">${data.title}</h4>
+                                            <div class="flex items-center gap-2 mt-2">
+                                                <i class="fas fa-play-circle text-neon-cyan"></i>
+                                                <span class="text-xs text-gray-400">Assistir agora</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            html += `</div></div>`;
+                        });
+                    });
+                    
+                    container.innerHTML = html;
+                } catch (e) {
+                    console.error("Erro ao carregar home:", e);
+                    container.innerHTML = `<p class="text-red-500">Erro ao carregar dados: ${e.message}</p>`;
+                }
+            },
+
+            renderPlayer: async (container, lessonId) => {
+                container.innerHTML = `<div class="flex justify-center mt-20"><div class="loader"></div></div>`;
+                
+                try {
+                    const docRef = getDocRef("lessons", lessonId);
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (!docSnap.exists()) {
+                        container.innerHTML = "<p class='text-white'>Aula não encontrada.</p>";
+                        return;
+                    }
+
+                    const data = docSnap.data();
+                    const ytId = utils.getYouTubeID(data.videoUrl);
+
+                    // Checar progresso
+                    let isCompleted = false;
+                    if(state.user && !state.user.isAnonymous) {
+                        const progressRef = getUserRef(state.user.uid, "progress", lessonId);
+                        try {
+                            const progressSnap = await getDoc(progressRef);
+                            if(progressSnap.exists() && progressSnap.data().concluido) isCompleted = true;
+                        } catch(err) {
+                            console.log("Erro ao checar progresso (pode ser anonimo)", err);
+                        }
+                    }
+
+                    container.innerHTML = `
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in">
+                            <!-- Video Area -->
+                            <div class="lg:col-span-2">
+                                <button onclick="app.router('home')" class="mb-4 text-gray-400 hover:text-white flex items-center gap-2">
+                                    <i class="fas fa-arrow-left"></i> Voltar
+                                </button>
+                                <div class="video-container border border-gray-800">
+                                    <iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1" frameborder="0" allowfullscreen></iframe>
+                                </div>
+                                <div class="flex justify-between items-center mt-4">
+                                    <h1 class="text-2xl md:text-3xl font-bold text-white">${data.title}</h1>
+                                    <button id="markBtn" onclick="window.markComplete('${lessonId}')" 
+                                        class="${isCompleted ? 'bg-green-600' : 'bg-gray-700 hover:bg-neon-purple'} px-4 py-2 rounded text-white font-bold transition flex items-center gap-2">
+                                        ${isCompleted ? '<i class="fas fa-check"></i> Concluído' : '<i class="fas fa-circle"></i> Marcar Concluído'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Sidebar / Resumo -->
+                            <div class="bg-netflix-dark p-6 rounded-lg border border-gray-800 h-fit">
+                                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                                    <h3 class="text-lg font-bold text-gray-300">Resumo da Aula</h3>
+                                    <div class="flex gap-2">
+                                        <button onclick="window.speechControl('play')" class="text-neon-cyan hover:text-white" title="Ouvir Resumo"><i class="fas fa-volume-up"></i></button>
+                                        <button onclick="window.speechControl('stop')" class="text-red-500 hover:text-white" title="Parar"><i class="fas fa-stop-circle"></i></button>
+                                    </div>
+                                </div>
+                                
+                                <div id="lessonSummary" class="prose prose-invert prose-sm max-h-96 overflow-y-auto text-gray-400 leading-relaxed">
+                                    ${data.summary || '<p>Sem resumo.</p>'}
+                                </div>
+
+                                ${data.fileUrl ? `
+                                    <a href="${data.fileUrl}" target="_blank" class="block mt-6 bg-gray-800 p-3 rounded text-center hover:bg-gray-700 transition border border-gray-600">
+                                        <i class="fas fa-download mr-2 text-neon-cyan"></i> Material Complementar
+                                    </a>
+                                ` : ''}
+                            </div>
                         </div>
-                        <div class="progress-bar" id="prog-${lesson.id}" style="width: ${progressWidth}"></div>
                     `;
-                    listContainer.appendChild(card);
-                });
-                lucide.createIcons();
-            } catch (e) {
-                listContainer.innerHTML = 'Erro ao carregar.';
-            }
-        }
-
-        // --- LÓGICA DE MODAL E PROGRESSO ---
-        window.openClass = async (lessonId) => {
-            currentLessonId = lessonId;
-            const docRef = doc(db, "lessons", lessonId);
-            const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                document.getElementById('modal-title').innerText = data.title;
-                document.getElementById('modal-desc').innerText = data.desc;
-                document.getElementById('modal-bg').style.backgroundImage = `url('${data.image}')`;
-                
-                // Video (Embed)
-                const vidContainer = document.getElementById('video-container');
-                if(data.videoUrl && data.videoUrl.includes('youtube')) {
-                    const videoId = data.videoUrl.split('v=')[1] || data.videoUrl.split('/').pop();
-                    vidContainer.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
-                } else {
-                    vidContainer.innerHTML = `<p style="color:white; padding:20px;">Video: ${data.videoUrl}</p>`;
+                } catch (e) {
+                    container.innerHTML = `<p class='text-red-500'>Erro: ${e.message}</p>`;
                 }
-
-                // Rich Content
-                document.getElementById('rich-text-content').innerHTML = data.content || "<p>Sem resumo.</p>";
-                // Links (aceitam NotebookLM)
-                document.getElementById('slides-link').href = data.slidesUrl || "#";
-                document.getElementById('audio-link').href = data.audioUrl || "#";
-
-                // Checar progresso
-                const checkBtn = document.getElementById('checkBtn');
-                const checkText = document.getElementById('checkText');
-                const progRef = doc(db, "users", currentUser.uid, "progress", lessonId);
-                const progSnap = await getDoc(progRef);
-                
-                if (progSnap.exists() && progSnap.data().done) {
-                    checkBtn.classList.add('done');
-                    checkText.innerText = "Concluído";
-                } else {
-                    checkBtn.classList.remove('done');
-                    checkText.innerText = "Marcar como Concluído";
-                }
-
-                document.getElementById('classModal').style.display = 'block';
-                document.body.style.overflow = 'hidden';
             }
         };
 
-        window.toggleProgress = async () => {
-            if(!currentUser || !currentLessonId) return;
-            const checkBtn = document.getElementById('checkBtn');
-            const checkText = document.getElementById('checkText');
-            const progRef = doc(db, "users", currentUser.uid, "progress", currentLessonId);
+        // --- 5. AUTH & EXPORTS GLOBAIS ---
+        const authManager = {
+            login: async () => {
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error(error);
+                    utils.showToast("Erro login: " + error.code);
+                }
+            },
+            logout: async () => {
+                await signOut(auth);
+                // Re-signin anonymously to keep app working
+                window.location.reload(); 
+            }
+        };
 
-            if (checkBtn.classList.contains('done')) {
-                checkBtn.classList.remove('done');
-                checkText.innerText = "Marcar como Concluído";
-                await setDoc(progRef, { done: false });
-                document.getElementById(`prog-${currentLessonId}`).style.width = '0%';
+        // Inicialização de Auth crítica
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } catch(e) {
+                    console.error("Token auth failed", e);
+                    await signInAnonymously(auth);
+                }
             } else {
-                checkBtn.classList.add('done');
-                checkText.innerText = "Concluído";
-                await setDoc(progRef, { done: true });
-                document.getElementById(`prog-${currentLessonId}`).style.width = '100%';
+                await signInAnonymously(auth);
             }
         };
 
-        window.closeModal = () => {
-            document.getElementById('classModal').style.display = 'none';
-            document.getElementById('video-container').innerHTML = ''; 
-            document.body.style.overflow = 'auto';
-        };
-        
-        window.switchTab = (tabName) => {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-            event.target.classList.add('active');
-        };
+        // Call init immediately
+        initAuth();
 
-        // --- FUNÇÕES ADMIN ---
-        window.showAdmin = () => {
-            document.getElementById('home-view').style.display = 'none';
-            document.getElementById('admin-panel').style.display = 'block';
-            loadAdminList();
-        }
-        window.hideAdmin = () => {
-            document.getElementById('home-view').style.display = 'block';
-            document.getElementById('admin-panel').style.display = 'none';
-            loadContent();
-        }
+        onAuthStateChanged(auth, (user) => {
+            state.user = user;
+            const authContainer = document.getElementById('authContainer');
+            const adminBtn = document.getElementById('adminBtn');
 
-        window.saveSiteConfig = async () => {
-            try {
-                const title = document.getElementById('config-title').value;
-                const favicon = document.getElementById('config-favicon').value;
-                await setDoc(doc(db, "settings", "general"), { title, favicon });
-                alert("Configurações salvas!");
-                loadSiteConfig();
-            } catch(e) { alert("Erro ao salvar config: " + e.message); }
-        }
-
-        window.addCategory = async () => {
-            const name = document.getElementById('cat-name').value;
-            if(!name) return alert("Digite o nome da matéria");
-            try {
-                await addDoc(collection(db, "categories"), { name });
-                document.getElementById('cat-name').value = '';
-                loadContent(); 
-                alert("Matéria Adicionada!");
-            } catch(e) { alert("Erro: " + e.message); }
-        }
-
-        window.deleteCategory = async (id) => {
-            if(confirm("Tem certeza? Isso não apaga as aulas, mas elas ficarão sem categoria.")) {
-                await deleteDoc(doc(db, "categories", id));
-                loadContent();
-            }
-        }
-
-        window.saveLesson = async () => {
-            const btn = document.getElementById('btn-save-lesson');
-            btn.innerText = "Salvando...";
-            btn.disabled = true;
-
-            try {
-                const catId = document.getElementById('lesson-cat-select').value;
-                const title = document.getElementById('lesson-title').value;
-                const desc = document.getElementById('lesson-desc').value;
-                const image = document.getElementById('lesson-img').value;
-                const videoUrl = document.getElementById('lesson-video').value;
-                const audioUrl = document.getElementById('lesson-audio').value;
-                const slidesUrl = document.getElementById('lesson-slides').value;
-                const content = quill ? quill.root.innerHTML : ""; 
-
-                if(!catId || catId === "") {
-                     throw new Error("Selecione uma Matéria na lista.");
-                }
-                if(!title) {
-                     throw new Error("Digite o título da aula.");
-                }
-
-                await addDoc(collection(db, "lessons"), {
-                    catId, title, desc, image, videoUrl, audioUrl, slidesUrl, content
-                });
+            if (user) {
+                // Logica de Admin simples para o ambiente
+                const isAdmin = (user.email && user.email.endsWith('@userpro.com'));
                 
-                alert("Aula Salva com Sucesso!");
-                // Limpar form
-                document.getElementById('lesson-title').value = '';
-                document.getElementById('lesson-desc').value = '';
-                if(quill) quill.setContents([]);
-                loadAdminList();
-            } catch (e) {
-                alert("Erro ao salvar: " + e.message);
-                console.error(e);
-            } finally {
-                btn.innerText = "Salvar Aula";
-                btn.disabled = false;
+                // Em um ambiente de desenvolvimento real, também permitimos admin se for o primeiro usuário ou baseado em regras
+                // Aqui, se logado com email, libero admin para testes se o usuario quiser (opcional)
+                if (isAdmin) {
+                    state.isAdmin = true;
+                    adminBtn.classList.remove('hidden');
+                } else {
+                    state.isAdmin = false;
+                    adminBtn.classList.add('hidden');
+                }
+
+                if (user.isAnonymous) {
+                     authContainer.innerHTML = `<button onclick="authManager.login()" class="bg-netflix-red px-4 py-1 rounded text-white font-bold hover:bg-red-700 transition">Entrar</button>`;
+                } else {
+                    authContainer.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <img src="${user.photoURL || 'https://ui-avatars.com/api/?name=User'}" class="w-8 h-8 rounded border border-gray-600">
+                            <button onclick="authManager.logout()" class="text-sm text-gray-400 hover:text-white">Sair</button>
+                        </div>
+                    `;
+                    utils.showToast(`Bem-vindo, ${user.displayName || 'Estudante'}!`);
+                }
+                
+                // Refresh current view logic if needed
+                if (state.currentView === 'home') mainApp.renderHome(document.getElementById('app'));
+
+            } else {
+                // Should not happen often due to auto anonymous sign in
+                state.isAdmin = false;
+                adminBtn.classList.add('hidden');
             }
-        }
+        });
+
+        // --- BINDINGS GLOBAIS ---
+        window.app = mainApp;
+        window.authManager = authManager;
+        window.playLesson = (id) => mainApp.router('player', id);
         
-        async function loadAdminList() {
-             const list = document.getElementById('admin-lesson-list');
-             list.innerHTML = 'Carregando lista de aulas...';
-             try {
-                const snapshot = await getDocs(collection(db, "lessons"));
-                list.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const d = doc.data();
-                    const item = document.createElement('div');
-                    item.className = 'list-item';
-                    item.innerHTML = `<span>${d.title}</span> <button class="btn btn-sm btn-danger" onclick="deleteLesson('${doc.id}')">X</button>`;
-                    list.appendChild(item);
-                });
-             } catch(e) {
-                 list.innerHTML = "Erro ao carregar lista.";
-             }
-        }
-        
-        window.deleteLesson = async (id) => {
-            if(confirm("Apagar aula permanentemente?")) {
-                await deleteDoc(doc(db, "lessons", id));
-                loadAdminList();
+        window.markComplete = async (lessonId) => {
+            if(!state.user || state.user.isAnonymous) return utils.showToast("Faça login Google para salvar progresso.");
+            try {
+                const ref = getUserRef(state.user.uid, "progress", lessonId);
+                await setDoc(ref, { concluido: true, date: new Date().toISOString() });
+                
+                // UI update
+                const btn = document.getElementById('markBtn');
+                if(btn) {
+                    btn.className = "bg-green-600 px-4 py-2 rounded text-white font-bold transition flex items-center gap-2";
+                    btn.innerHTML = '<i class="fas fa-check"></i> Concluído';
+                }
+                utils.showToast("Progresso salvo!");
+            } catch (e) { 
+                console.error(e); 
+                utils.showToast("Erro ao salvar progresso.");
             }
-        }
+        };
+
+        window.speechControl = (action) => {
+            const synth = window.speechSynthesis;
+            if (action === 'stop') {
+                synth.cancel();
+                return;
+            }
+            
+            const summaryEl = document.getElementById('lessonSummary');
+            if(!summaryEl) return;
+            
+            const text = utils.stripHtml(summaryEl.innerHTML);
+            
+            synth.cancel(); // Limpa fila anterior
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'pt-BR';
+            
+            synth.speak(utterance);
+            utils.showToast("Reproduzindo resumo...");
+        };
+
     </script>
 </body>
 </html>
