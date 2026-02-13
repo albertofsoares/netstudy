@@ -220,7 +220,7 @@
             <div class="admin-section">
                 <h2>🎬 Adicionar/Editar Aula</h2>
                 <div class="admin-form">
-                    <select id="lesson-cat-select"><option>Selecione a Matéria</option></select>
+                    <select id="lesson-cat-select"><option value="">Selecione a Matéria</option></select>
                     <input type="text" id="lesson-title" placeholder="Título da Aula">
                     <input type="text" id="lesson-desc" placeholder="Descrição Curta">
                     <input type="text" id="lesson-img" placeholder="URL da Imagem de Capa">
@@ -231,7 +231,7 @@
                     <h3 style="margin: 20px 0 10px;">Resumo & Conteúdo (Editor Rico)</h3>
                     <div id="editor-container" style="height: 300px; background: white; color: black;"></div>
                     
-                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="saveLesson()">Salvar Aula</button>
+                    <button id="btn-save-lesson" class="btn btn-primary" style="margin-top: 20px;" onclick="saveLesson()">Salvar Aula</button>
                 </div>
                 <div class="item-list" id="admin-lesson-list"></div>
             </div>
@@ -357,45 +357,52 @@
         });
 
         // --- QUILLO EDITOR SETUP ---
+        // Inicializa imediatamente para garantir disponibilidade
+        setTimeout(() => {
+            if(document.getElementById('editor-container')) {
+                quill = new Quill('#editor-container', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            ['blockquote', 'code-block'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            ['clean']
+                        ]
+                    }
+                });
+            }
+        }, 1000);
+
         window.addEventListener('DOMContentLoaded', () => {
-            quill = new Quill('#editor-container', {
-                theme: 'snow',
-                modules: {
-                    toolbar: [
-                        [{ 'header': [1, 2, 3, false] }],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        ['blockquote', 'code-block'],
-                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        [{ 'color': [] }, { 'background': [] }],
-                        ['clean']
-                    ]
-                }
-            });
-            lucide.createIcons();
+             lucide.createIcons();
         });
 
         // --- LÓGICA DO APP (USUÁRIO) ---
 
         // Carregar Configurações (Título, Logo)
         async function loadSiteConfig() {
-            const docSnap = await getDoc(doc(db, "settings", "general"));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if(data.title) {
-                    document.title = data.title;
-                    document.getElementById('site-logo').innerText = data.title;
-                }
-                // Favicon Hack
-                if(data.favicon) {
-                    let link = document.querySelector("link[rel~='icon']");
-                    if (!link) {
-                        link = document.createElement('link');
-                        link.rel = 'icon';
-                        document.getElementsByTagName('head')[0].appendChild(link);
+            try {
+                const docSnap = await getDoc(doc(db, "settings", "general"));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if(data.title) {
+                        document.title = data.title;
+                        document.getElementById('site-logo').innerText = data.title;
                     }
-                    link.href = data.favicon;
+                    if(data.favicon) {
+                        let link = document.querySelector("link[rel~='icon']");
+                        if (!link) {
+                            link = document.createElement('link');
+                            link.rel = 'icon';
+                            document.getElementsByTagName('head')[0].appendChild(link);
+                        }
+                        link.href = data.favicon;
+                    }
                 }
-            }
+            } catch (e) { console.log("Config não carregada (primeiro uso)", e); }
         }
 
         // Carregar Conteúdo (Categorias e Aulas)
@@ -405,79 +412,94 @@
             const adminCatSelect = document.getElementById('lesson-cat-select');
             const adminCatList = document.getElementById('admin-cat-list');
 
-            // Limpa Select Admin
+            // Limpa Select Admin e define valor padrão vazio
             adminCatSelect.innerHTML = '<option value="">Selecione a Matéria</option>';
             adminCatList.innerHTML = '';
 
-            const q = collection(db, "categories");
-            const querySnapshot = await getDocs(q);
+            try {
+                const q = collection(db, "categories");
+                const querySnapshot = await getDocs(q);
 
-            querySnapshot.forEach((docSnap) => {
-                const catData = docSnap.data();
-                const catId = docSnap.id;
+                querySnapshot.forEach((docSnap) => {
+                    const catData = docSnap.data();
+                    const catId = docSnap.id;
 
-                // 1. Renderiza no Site
-                const section = document.createElement('section');
-                section.className = 'category';
-                section.innerHTML = `
-                    <div class="category-header">
-                        <h2>${catData.name}</h2>
-                    </div>
-                    <div class="carousel" id="cat-${catId}">Loading...</div>
-                `;
-                catContainer.appendChild(section);
-                
-                // Busca aulas dessa categoria
-                loadLessonsForCategory(catId);
+                    // 1. Renderiza no Site
+                    const section = document.createElement('section');
+                    section.className = 'category';
+                    section.innerHTML = `
+                        <div class="category-header">
+                            <h2>${catData.name}</h2>
+                        </div>
+                        <div class="carousel" id="cat-${catId}">Carregando aulas...</div>
+                    `;
+                    catContainer.appendChild(section);
+                    
+                    // Busca aulas dessa categoria
+                    loadLessonsForCategory(catId);
 
-                // 2. Renderiza no Admin (Select e Lista)
-                const opt = document.createElement('option');
-                opt.value = catId; opt.innerText = catData.name;
-                adminCatSelect.appendChild(opt);
+                    // 2. Renderiza no Admin (Select e Lista)
+                    const opt = document.createElement('option');
+                    opt.value = catId; 
+                    opt.innerText = catData.name;
+                    adminCatSelect.appendChild(opt);
 
-                const divItem = document.createElement('div');
-                divItem.className = 'list-item';
-                divItem.innerHTML = `<span>${catData.name}</span> <button class="btn btn-sm btn-danger" onclick="deleteCategory('${catId}')">X</button>`;
-                adminCatList.appendChild(divItem);
-            });
+                    const divItem = document.createElement('div');
+                    divItem.className = 'list-item';
+                    divItem.innerHTML = `<span>${catData.name}</span> <button class="btn btn-sm btn-danger" onclick="deleteCategory('${catId}')">X</button>`;
+                    adminCatList.appendChild(divItem);
+                });
+            } catch (e) {
+                console.error("Erro ao carregar categorias:", e);
+            }
         }
 
         async function loadLessonsForCategory(catId) {
             const listContainer = document.getElementById(`cat-${catId}`);
             listContainer.innerHTML = '';
 
-            const q = collection(db, "lessons"); // Na real seria melhor query(collection(db, "lessons"), where("catId", "==", catId)) mas simplifiquei
-            const snapshot = await getDocs(q);
-            
-            // Filtro manual client-side para simplificar indexação
-            const lessons = [];
-            snapshot.forEach(d => {
-                if(d.data().catId === catId) lessons.push({id: d.id, ...d.data()});
-            });
+            try {
+                const q = collection(db, "lessons");
+                const snapshot = await getDocs(q);
+                
+                const lessons = [];
+                snapshot.forEach(d => {
+                    if(d.data().catId === catId) lessons.push({id: d.id, ...d.data()});
+                });
 
-            lessons.forEach(async lesson => {
-                // Checar progresso
-                let progressWidth = '0%';
-                if (currentUser) {
-                    const progRef = doc(db, "users", currentUser.uid, "progress", lesson.id);
-                    const progSnap = await getDoc(progRef);
-                    if(progSnap.exists() && progSnap.data().done) progressWidth = '100%';
+                if(lessons.length === 0) {
+                    listContainer.innerHTML = '<p style="color:#666; font-size: 0.9rem; padding: 10px;">Nenhuma aula cadastrada ainda.</p>';
+                    return;
                 }
 
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.style.backgroundImage = `url('${lesson.image || "https://via.placeholder.com/300"}')`;
-                card.onclick = () => openClass(lesson.id);
-                card.innerHTML = `
-                    <div class="card-content">
-                        <h3>${lesson.title}</h3>
-                        <i data-lucide="play-circle" style="margin-top:10px;"></i>
-                    </div>
-                    <div class="progress-bar" id="prog-${lesson.id}" style="width: ${progressWidth}"></div>
-                `;
-                listContainer.appendChild(card);
-            });
-            lucide.createIcons();
+                lessons.forEach(async lesson => {
+                    // Checar progresso
+                    let progressWidth = '0%';
+                    if (currentUser) {
+                        const progRef = doc(db, "users", currentUser.uid, "progress", lesson.id);
+                        try {
+                            const progSnap = await getDoc(progRef);
+                            if(progSnap.exists() && progSnap.data().done) progressWidth = '100%';
+                        } catch(e) {}
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.style.backgroundImage = `url('${lesson.image || "https://via.placeholder.com/300"}')`;
+                    card.onclick = () => openClass(lesson.id);
+                    card.innerHTML = `
+                        <div class="card-content">
+                            <h3>${lesson.title}</h3>
+                            <i data-lucide="play-circle" style="margin-top:10px;"></i>
+                        </div>
+                        <div class="progress-bar" id="prog-${lesson.id}" style="width: ${progressWidth}"></div>
+                    `;
+                    listContainer.appendChild(card);
+                });
+                lucide.createIcons();
+            } catch (e) {
+                listContainer.innerHTML = 'Erro ao carregar.';
+            }
         }
 
         // --- LÓGICA DE MODAL E PROGRESSO ---
@@ -495,7 +517,6 @@
                 // Video (Embed)
                 const vidContainer = document.getElementById('video-container');
                 if(data.videoUrl && data.videoUrl.includes('youtube')) {
-                     // Extrair ID simples se for Youtube
                     const videoId = data.videoUrl.split('v=')[1] || data.videoUrl.split('/').pop();
                     vidContainer.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
                 } else {
@@ -504,6 +525,7 @@
 
                 // Rich Content
                 document.getElementById('rich-text-content').innerHTML = data.content || "<p>Sem resumo.</p>";
+                // Links (aceitam NotebookLM)
                 document.getElementById('slides-link').href = data.slidesUrl || "#";
                 document.getElementById('audio-link').href = data.audioUrl || "#";
 
@@ -533,13 +555,11 @@
             const progRef = doc(db, "users", currentUser.uid, "progress", currentLessonId);
 
             if (checkBtn.classList.contains('done')) {
-                // Desmarcar
                 checkBtn.classList.remove('done');
                 checkText.innerText = "Marcar como Concluído";
                 await setDoc(progRef, { done: false });
                 document.getElementById(`prog-${currentLessonId}`).style.width = '0%';
             } else {
-                // Marcar
                 checkBtn.classList.add('done');
                 checkText.innerText = "Concluído";
                 await setDoc(progRef, { done: true });
@@ -549,7 +569,7 @@
 
         window.closeModal = () => {
             document.getElementById('classModal').style.display = 'none';
-            document.getElementById('video-container').innerHTML = ''; // Stop video
+            document.getElementById('video-container').innerHTML = ''; 
             document.body.style.overflow = 'auto';
         };
         
@@ -569,78 +589,102 @@
         window.hideAdmin = () => {
             document.getElementById('home-view').style.display = 'block';
             document.getElementById('admin-panel').style.display = 'none';
-            loadContent(); // Recarregar para ver mudanças
+            loadContent();
         }
 
         window.saveSiteConfig = async () => {
-            const title = document.getElementById('config-title').value;
-            const favicon = document.getElementById('config-favicon').value;
-            await setDoc(doc(db, "settings", "general"), { title, favicon });
-            alert("Configurações salvas!");
-            loadSiteConfig();
+            try {
+                const title = document.getElementById('config-title').value;
+                const favicon = document.getElementById('config-favicon').value;
+                await setDoc(doc(db, "settings", "general"), { title, favicon });
+                alert("Configurações salvas!");
+                loadSiteConfig();
+            } catch(e) { alert("Erro ao salvar config: " + e.message); }
         }
 
         window.addCategory = async () => {
             const name = document.getElementById('cat-name').value;
-            if(!name) return;
-            await addDoc(collection(db, "categories"), { name });
-            document.getElementById('cat-name').value = '';
-            loadContent(); // Refresh lists
+            if(!name) return alert("Digite o nome da matéria");
+            try {
+                await addDoc(collection(db, "categories"), { name });
+                document.getElementById('cat-name').value = '';
+                loadContent(); 
+                alert("Matéria Adicionada!");
+            } catch(e) { alert("Erro: " + e.message); }
         }
 
         window.deleteCategory = async (id) => {
-            if(confirm("Tem certeza?")) {
+            if(confirm("Tem certeza? Isso não apaga as aulas, mas elas ficarão sem categoria.")) {
                 await deleteDoc(doc(db, "categories", id));
                 loadContent();
             }
         }
 
         window.saveLesson = async () => {
-            const catId = document.getElementById('lesson-cat-select').value;
-            const title = document.getElementById('lesson-title').value;
-            const desc = document.getElementById('lesson-desc').value;
-            const image = document.getElementById('lesson-img').value;
-            const videoUrl = document.getElementById('lesson-video').value;
-            const audioUrl = document.getElementById('lesson-audio').value;
-            const slidesUrl = document.getElementById('lesson-slides').value;
-            const content = quill.root.innerHTML; // Pega HTML do editor
+            const btn = document.getElementById('btn-save-lesson');
+            btn.innerText = "Salvando...";
+            btn.disabled = true;
 
-            if(!catId || !title) return alert("Preencha categoria e título");
+            try {
+                const catId = document.getElementById('lesson-cat-select').value;
+                const title = document.getElementById('lesson-title').value;
+                const desc = document.getElementById('lesson-desc').value;
+                const image = document.getElementById('lesson-img').value;
+                const videoUrl = document.getElementById('lesson-video').value;
+                const audioUrl = document.getElementById('lesson-audio').value;
+                const slidesUrl = document.getElementById('lesson-slides').value;
+                const content = quill ? quill.root.innerHTML : ""; 
 
-            await addDoc(collection(db, "lessons"), {
-                catId, title, desc, image, videoUrl, audioUrl, slidesUrl, content
-            });
-            
-            alert("Aula Salva!");
-            // Limpar form
-            document.getElementById('lesson-title').value = '';
-            quill.setContents([]);
-            loadAdminList();
+                if(!catId || catId === "") {
+                     throw new Error("Selecione uma Matéria na lista.");
+                }
+                if(!title) {
+                     throw new Error("Digite o título da aula.");
+                }
+
+                await addDoc(collection(db, "lessons"), {
+                    catId, title, desc, image, videoUrl, audioUrl, slidesUrl, content
+                });
+                
+                alert("Aula Salva com Sucesso!");
+                // Limpar form
+                document.getElementById('lesson-title').value = '';
+                document.getElementById('lesson-desc').value = '';
+                if(quill) quill.setContents([]);
+                loadAdminList();
+            } catch (e) {
+                alert("Erro ao salvar: " + e.message);
+                console.error(e);
+            } finally {
+                btn.innerText = "Salvar Aula";
+                btn.disabled = false;
+            }
         }
         
         async function loadAdminList() {
              const list = document.getElementById('admin-lesson-list');
-             list.innerHTML = 'Carregando aulas...';
-             const snapshot = await getDocs(collection(db, "lessons"));
-             list.innerHTML = '';
-             snapshot.forEach(doc => {
-                 const d = doc.data();
-                 const item = document.createElement('div');
-                 item.className = 'list-item';
-                 item.innerHTML = `<span>${d.title}</span> <button class="btn btn-sm btn-danger" onclick="deleteLesson('${doc.id}')">X</button>`;
-                 list.appendChild(item);
-             });
+             list.innerHTML = 'Carregando lista de aulas...';
+             try {
+                const snapshot = await getDocs(collection(db, "lessons"));
+                list.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const d = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `<span>${d.title}</span> <button class="btn btn-sm btn-danger" onclick="deleteLesson('${doc.id}')">X</button>`;
+                    list.appendChild(item);
+                });
+             } catch(e) {
+                 list.innerHTML = "Erro ao carregar lista.";
+             }
         }
         
         window.deleteLesson = async (id) => {
-            if(confirm("Apagar aula?")) {
+            if(confirm("Apagar aula permanentemente?")) {
                 await deleteDoc(doc(db, "lessons", id));
                 loadAdminList();
             }
         }
-
-        // Tornar funções globais acessíveis fora do módulo
-        window.addCategory = window.addCategory;
     </script>
 </body>
 </html>
