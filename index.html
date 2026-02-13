@@ -126,7 +126,7 @@
                 Painel Admin
             </button>
             <div id="authContainer">
-                <!-- Auth state injected here -->
+                <!-- Auth state injected here via JS -->
             </div>
         </div>
     </nav>
@@ -136,6 +136,38 @@
         <div class="flex justify-center mt-20"><div class="loader"></div></div>
     </main>
 
+    <!-- Modal de Login -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-80 hidden z-[60] flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-netflix-dark p-8 rounded-lg border border-gray-700 w-full max-w-md relative shadow-2xl shadow-purple-900/20">
+            <button onclick="authManager.toggleModal(false)" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+            
+            <h2 class="text-3xl font-bold mb-6 text-white text-center">Entrar ou Cadastrar</h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 ml-1 uppercase font-bold">E-mail</label>
+                    <input type="email" id="emailInput" placeholder="exemplo@userpro.com" class="w-full p-3 bg-gray-800 text-white rounded border border-gray-600 focus:border-neon-cyan focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1 ml-1 uppercase font-bold">Senha</label>
+                    <input type="password" id="passInput" placeholder="Sua senha secreta" class="w-full p-3 bg-gray-800 text-white rounded border border-gray-600 focus:border-neon-cyan focus:outline-none transition">
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button onclick="authManager.handleLogin()" class="flex-1 bg-netflix-red text-white font-bold py-3 rounded hover:bg-red-700 transition transform hover:scale-105">
+                        Entrar
+                    </button>
+                    <button onclick="authManager.handleRegister()" class="flex-1 border border-gray-500 text-gray-300 font-bold py-3 rounded hover:border-white hover:text-white hover:bg-gray-800 transition">
+                        Cadastrar
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 text-center mt-4">
+                    Para acesso Admin, use um e-mail terminando em <span class="text-neon-cyan">@userpro.com</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Loading/Toast -->
     <div id="toast" class="fixed bottom-5 right-5 bg-netflix-dark border-l-4 border-neon-cyan p-4 rounded shadow-2xl transform translate-y-full transition-transform duration-300 z-50">
         <p id="toastMsg" class="text-white font-bold"></p>
@@ -144,20 +176,28 @@
     <!-- Scripts Modulares -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, doc, getDoc, updateDoc, setDoc, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage.js";
 
         // --- 1. FIREBASE CONFIG & HELPERS ---
-        // Usa as variáveis globais do ambiente para configurar corretamente
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = __app_id;
+        // Configuração Hardcoded conforme solicitado
+        const firebaseConfig = {
+            apiKey: "AIzaSyC38VXjnYskoAx5SLF6n3PiEgnaRtz4IJ0",
+            authDomain: "studyflix53.firebaseapp.com",
+            projectId: "studyflix53",
+            storageBucket: "studyflix53.firebasestorage.app",
+            messagingSenderId: "799853597162",
+            appId: "1:799853597162:web:179f1450c419157d62a293"
+        };
+
+        // Definindo ID do app para estruturar o banco de dados
+        const appId = "studyflix53";
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-        const provider = new GoogleAuthProvider();
 
         // Helper para caminhos seguros (evita erros de permissão)
         const getColRef = (colName) => collection(db, 'artifacts', appId, 'public', 'data', colName);
@@ -491,76 +531,98 @@
 
         // --- 5. AUTH & EXPORTS GLOBAIS ---
         const authManager = {
-            login: async () => {
-                try {
-                    await signInWithPopup(auth, provider);
-                } catch (error) {
-                    console.error(error);
-                    utils.showToast("Erro login: " + error.code);
+            toggleModal: (show) => {
+                const modal = document.getElementById('loginModal');
+                if(show) {
+                    modal.classList.remove('hidden');
+                } else {
+                    modal.classList.add('hidden');
                 }
             },
+
+            handleLogin: async () => {
+                const email = document.getElementById('emailInput').value;
+                const pass = document.getElementById('passInput').value;
+                
+                if(!email || !pass) return utils.showToast("Preencha email e senha.");
+
+                try {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                    authManager.toggleModal(false);
+                    utils.showToast("Login realizado com sucesso!");
+                } catch (error) {
+                    console.error(error);
+                    utils.showToast("Erro Login: " + error.message);
+                }
+            },
+
+            handleRegister: async () => {
+                const email = document.getElementById('emailInput').value;
+                const pass = document.getElementById('passInput').value;
+
+                if(!email || !pass) return utils.showToast("Preencha email e senha.");
+                if(pass.length < 6) return utils.showToast("Senha deve ter min. 6 caracteres");
+
+                try {
+                    await createUserWithEmailAndPassword(auth, email, pass);
+                    authManager.toggleModal(false);
+                    utils.showToast("Cadastro realizado! Bem-vindo.");
+                } catch (error) {
+                    console.error(error);
+                    utils.showToast("Erro Cadastro: " + error.message);
+                }
+            },
+
             logout: async () => {
                 await signOut(auth);
-                // Re-signin anonymously to keep app working
+                // Re-signin anonymously to keep app working for public view
                 window.location.reload(); 
             }
         };
 
-        // Inicialização de Auth crítica
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                try {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } catch(e) {
-                    console.error("Token auth failed", e);
-                    await signInAnonymously(auth);
-                }
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-
-        // Call init immediately
-        initAuth();
-
+        // Inicialização: Tenta login anonimo se não houver usuario logado para permitir leitura
         onAuthStateChanged(auth, (user) => {
             state.user = user;
             const authContainer = document.getElementById('authContainer');
             const adminBtn = document.getElementById('adminBtn');
 
             if (user) {
-                // Logica de Admin simples para o ambiente
-                const isAdmin = (user.email && user.email.endsWith('@userpro.com'));
-                
-                // Em um ambiente de desenvolvimento real, também permitimos admin se for o primeiro usuário ou baseado em regras
-                // Aqui, se logado com email, libero admin para testes se o usuario quiser (opcional)
-                if (isAdmin) {
-                    state.isAdmin = true;
-                    adminBtn.classList.remove('hidden');
-                } else {
-                    state.isAdmin = false;
-                    adminBtn.classList.add('hidden');
-                }
-
+                // Se é anônimo, mostramos botão de Entrar
                 if (user.isAnonymous) {
-                     authContainer.innerHTML = `<button onclick="authManager.login()" class="bg-netflix-red px-4 py-1 rounded text-white font-bold hover:bg-red-700 transition">Entrar</button>`;
+                     state.isAdmin = false;
+                     adminBtn.classList.add('hidden');
+                     authContainer.innerHTML = `<button onclick="authManager.toggleModal(true)" class="bg-netflix-red px-4 py-1 rounded text-white font-bold hover:bg-red-700 transition">Entrar</button>`;
                 } else {
+                    // Usuário logado com Email/Senha
+                    
+                    // Checagem de Admin
+                    if (user.email && user.email.endsWith('@userpro.com')) {
+                        state.isAdmin = true;
+                        adminBtn.classList.remove('hidden');
+                    } else {
+                        state.isAdmin = false;
+                        adminBtn.classList.add('hidden');
+                    }
+
                     authContainer.innerHTML = `
                         <div class="flex items-center gap-3">
-                            <img src="${user.photoURL || 'https://ui-avatars.com/api/?name=User'}" class="w-8 h-8 rounded border border-gray-600">
-                            <button onclick="authManager.logout()" class="text-sm text-gray-400 hover:text-white">Sair</button>
+                            <div class="flex flex-col text-right hidden md:block">
+                                <span class="text-xs text-gray-400">Olá,</span>
+                                <span class="text-sm font-bold text-white leading-none">${user.email.split('@')[0]}</span>
+                            </div>
+                            <img src="https://ui-avatars.com/api/?background=random&name=${user.email}" class="w-8 h-8 rounded border border-gray-600">
+                            <button onclick="authManager.logout()" class="text-xs border border-gray-600 px-2 py-1 rounded text-gray-400 hover:text-white hover:border-white transition">Sair</button>
                         </div>
                     `;
-                    utils.showToast(`Bem-vindo, ${user.displayName || 'Estudante'}!`);
+                    utils.showToast(`Bem-vindo, ${user.email}!`);
                 }
                 
-                // Refresh current view logic if needed
-                if (state.currentView === 'home') mainApp.renderHome(document.getElementById('app'));
+                // Se estiver na home, recarrega para atualizar infos de progresso se houver
+                if (state.currentView === 'home' && !user.isAnonymous) mainApp.renderHome(document.getElementById('app'));
 
             } else {
-                // Should not happen often due to auto anonymous sign in
-                state.isAdmin = false;
-                adminBtn.classList.add('hidden');
+                // Se ninguém está logado (nem anônimo), faz login anônimo para liberar a view
+                signInAnonymously(auth).catch(e => console.error("Erro auth anonimo", e));
             }
         });
 
@@ -570,7 +632,10 @@
         window.playLesson = (id) => mainApp.router('player', id);
         
         window.markComplete = async (lessonId) => {
-            if(!state.user || state.user.isAnonymous) return utils.showToast("Faça login Google para salvar progresso.");
+            if(!state.user || state.user.isAnonymous) {
+                authManager.toggleModal(true);
+                return utils.showToast("Faça login para salvar progresso.");
+            }
             try {
                 const ref = getUserRef(state.user.uid, "progress", lessonId);
                 await setDoc(ref, { concluido: true, date: new Date().toISOString() });
